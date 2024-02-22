@@ -1,57 +1,99 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"math"
+	"log"
+	"os"
+	"strings"
+
+	"github.com/eiannone/keyboard"
 )
 
-type Shape struct {
-	Name string
+type URL struct {
+	Name        string
+	URL         string
+	Description string
+	Tags        []string
+	Date        string
 }
 
-func (s Shape) GetName() string {
-	return s.Name
-}
-
-func (s Shape) Area() float64 {
-	return 0.0
-}
-
-type Circle struct {
-	Shape
-	Radius float64
-}
-
-func (c Circle) Area() float64 {
-	return math.Pi * math.Pow(c.Radius, 2)
-}
-
-type Rectangle struct {
-	Shape
-	Width  float64
-	Height float64
-}
-
-func (r Rectangle) Area() float64 {
-	return r.Width * r.Height
-}
+var urlList []URL
 
 func main() {
-	var EntRad float64
-	fmt.Print("Введите радиус круга: ")
-	fmt.Scan(&EntRad)
+	defer func() {
+		_ = keyboard.Close()
+	}()
 
-	var EntWid float64
-	fmt.Print("Введите сторону A прямоугольника: ")
-	fmt.Scan(&EntWid)
+	fmt.Println("Программа для добавления url в список")
+	fmt.Println("Для выхода из приложения нажмите Esc")
 
-	var EntHeig float64
-	fmt.Print("Введите сторону B прямоугольника: ")
-	fmt.Scan(&EntHeig)
+OuterLoop:
+	for {
+		if err := keyboard.Open(); err != nil {
+			log.Fatal(err)
+		}
 
-	circle := Circle{Shape{"Круг"}, EntRad}
-	rectangle := Rectangle{Shape{"Прямоугольник"}, EntWid, EntHeig}
+		char, key, err := keyboard.GetKey()
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	fmt.Printf("%s: Площадь = %.2f\n", circle.GetName(), circle.Area())
-	fmt.Printf("%s: Площадь = %.2f\n", rectangle.GetName(), rectangle.Area())
+		switch char {
+		case 'a':
+			if err := keyboard.Close(); err != nil {
+				log.Fatal(err)
+			}
+
+			fmt.Println("Введите новую запись в формате <url описание теги>")
+
+			reader := bufio.NewReader(os.Stdin)
+			text, _ := reader.ReadString('\n')
+			args := strings.Fields(text)
+			if len(args) < 3 {
+				fmt.Println("Введите правильные аргументы в формате url описание теги")
+				continue OuterLoop
+			}
+
+			newURL := URL{
+				Name:        args[0],
+				URL:         args[1],
+				Description: args[2],
+				Tags:        args[3:],
+				Date:        "сегодня",
+			}
+
+			urlList = append(urlList, newURL)
+			fmt.Println("URL успешно добавлен")
+
+		case 'l':
+			fmt.Printf("Всего добавлено URL: %d\n", len(urlList))
+			for _, url := range urlList {
+				fmt.Printf("Имя: %s\nURL: %s\nОписание: %s\nТеги: %s\nДата: %s\n\n", url.Name, url.URL, url.Description, strings.Join(url.Tags, ", "), url.Date)
+			}
+
+		case 'r':
+			if err := keyboard.Close(); err != nil {
+				log.Fatal(err)
+			}
+
+			fmt.Println("Введите имя ссылки, которую нужно удалить")
+			reader := bufio.NewReader(os.Stdin)
+			text, _ := reader.ReadString('\n')
+			name := strings.TrimSpace(text)
+
+			for i, url := range urlList {
+				if url.Name == name {
+					urlList = append(urlList[:i], urlList[i+1:]...)
+					fmt.Printf("URL с именем '%s' успешно удален\n", name)
+					break
+				}
+			}
+
+		default:
+			if key == keyboard.KeyEsc {
+				return
+			}
+		}
+	}
 }
